@@ -9,34 +9,53 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 소스 체크아웃 (엔진 서브모듈 포함)
+      - name: 소스 체크아웃
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: 안드로이드 SDK 직접 설치 + 빌드
+      - name: 터널 엔진 내려받기 (2.18.0 고정)
+        run: |
+          set -e
+          DEST="app/src/main/jni/hev-socks5-tunnel"
+          rm -rf "$DEST"
+          git clone --depth 1 --branch 2.18.0 \
+            --recurse-submodules --shallow-submodules \
+            https://github.com/heiher/hev-socks5-tunnel "$DEST"
+          echo "=== 엔진 받기 완료, 핵심 파일 확인 ==="
+          ls "$DEST/src/hev-jni.c"
+          ls "$DEST/Android.mk"
+
+      - name: 안드로이드 SDK 설치 + APK 빌드
         run: |
           set -e
           sudo apt-get update -y
           sudo apt-get install -y wget unzip file
-          # 명령줄 도구 내려받기 (레퍼런스와 동일한 안정 버전)
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
           mkdir -p sdk
           unzip -q -d sdk commandlinetools-linux-13114758_latest.zip
           export ANDROID_HOME="$PWD/sdk"
           export ANDROID_SDK_ROOT="$PWD/sdk"
           export JAVA_HOME="$JAVA_HOME_17_X64"
-          # 라이선스 수락
           yes | sdk/cmdline-tools/bin/sdkmanager --sdk_root="$PWD/sdk" --licenses >/dev/null 2>&1 || true
-          # 필요한 패키지 설치 (NDK는 build.gradle의 ndkVersion과 일치)
           sdk/cmdline-tools/bin/sdkmanager --sdk_root="$PWD/sdk" \
             "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0" \
             "ndk;27.2.12479018"
-          # 빌드
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: APK에 엔진(.so) 들어갔는지 검사
+        run: |
+          set -e
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          echo "APK: $APK"
+          if unzip -l "$APK" | grep -q "lib/arm64-v8a/libhev-socks5-tunnel.so"; then
+            echo "✅ 엔진 .so 포함됨"
+          else
+            echo "❌ 엔진 .so 누락! 빌드 로그를 확인하세요."
+            unzip -l "$APK" | grep "lib/" || echo "   (lib 폴더 자체가 없음)"
+            exit 1
+          fi
 
       - name: APK 이름 정리
         run: |

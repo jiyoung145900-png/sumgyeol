@@ -1,0 +1,45 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 소스 체크아웃 (엔진 서브모듈 포함)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: JDK 17 설치
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: 안드로이드 SDK 준비
+        uses: android-actions/setup-android@v3
+
+      - name: NDK 설치
+        run: |
+          yes | sdkmanager "ndk;27.2.12479018" "platforms;android-34" "build-tools;34.0.0" || true
+
+      - name: APK 빌드
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: APK 이름 정리
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/*.apk out/숨결.apk || cp app/build/outputs/apk/release/*.apk out/sumgyeol.apk
+
+      - name: APK 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: 숨결-apk
+          path: out/*.apk
+          if-no-files-found: error

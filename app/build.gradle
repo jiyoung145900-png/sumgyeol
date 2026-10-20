@@ -1,0 +1,65 @@
+apply plugin: 'com.android.application'
+
+android {
+	namespace "cc.sumgyeol.app"
+	compileSdkVersion 34
+	ndkVersion "27.2.12479018"
+
+	defaultConfig {
+		applicationId "cc.sumgyeol.app"
+		minSdkVersion 24
+		targetSdkVersion 34
+		versionCode 1
+		versionName "1.0"
+		setProperty("archivesBaseName", "sumgyeol-$versionName")
+		ndk {
+			abiFilters "armeabi-v7a", "arm64-v8a", "x86_64"
+		}
+		externalNativeBuild {
+			ndkBuild {
+				arguments "APP_CFLAGS+=-DPKGNAME=cc/sumgyeol/app -ffile-prefix-map=${rootDir}=."
+				arguments "APP_LDFLAGS+=-Wl,--build-id=none"
+			}
+		}
+	}
+
+	signingConfigs {
+		release {
+			storeFile rootProject.file("sumgyeol.keystore")
+			storePassword "sumgyeol2026"
+			keyAlias "sumgyeol"
+			keyPassword "sumgyeol2026"
+		}
+	}
+
+	buildTypes {
+		release {
+			minifyEnabled false
+			signingConfig signingConfigs.release
+		}
+		debug {
+			signingConfig signingConfigs.release
+		}
+	}
+
+	externalNativeBuild {
+		ndkBuild {
+			path "src/main/jni/Android.mk"
+		}
+	}
+
+	lintOptions {
+		checkReleaseBuilds false
+		abortOnError false
+	}
+
+	dependenciesInfo {
+		includeInApk = false
+		includeInBundle = false
+	}
+}
+
+dependencies {
+	implementation 'androidx.appcompat:appcompat:1.7.0'
+	implementation 'com.google.android.material:material:1.12.0'
+}

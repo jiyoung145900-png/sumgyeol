@@ -14,28 +14,34 @@ jobs:
         with:
           submodules: recursive
 
-      - name: JDK 17 설치
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: 안드로이드 SDK 준비
-        uses: android-actions/setup-android@v3
-
-      - name: NDK 설치
+      - name: 안드로이드 SDK 직접 설치 + 빌드
         run: |
-          yes | sdkmanager "ndk;27.2.12479018" "platforms;android-34" "build-tools;34.0.0" || true
-
-      - name: APK 빌드
-        run: |
+          set -e
+          sudo apt-get update -y
+          sudo apt-get install -y wget unzip file
+          # 명령줄 도구 내려받기 (레퍼런스와 동일한 안정 버전)
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+          mkdir -p sdk
+          unzip -q -d sdk commandlinetools-linux-13114758_latest.zip
+          export ANDROID_HOME="$PWD/sdk"
+          export ANDROID_SDK_ROOT="$PWD/sdk"
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          # 라이선스 수락
+          yes | sdk/cmdline-tools/bin/sdkmanager --sdk_root="$PWD/sdk" --licenses >/dev/null 2>&1 || true
+          # 필요한 패키지 설치 (NDK는 build.gradle의 ndkVersion과 일치)
+          sdk/cmdline-tools/bin/sdkmanager --sdk_root="$PWD/sdk" \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "ndk;27.2.12479018"
+          # 빌드
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: APK 이름 정리
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/release/*.apk out/숨결.apk || cp app/build/outputs/apk/release/*.apk out/sumgyeol.apk
+          cp app/build/outputs/apk/release/*.apk "out/숨결.apk"
 
       - name: APK 업로드
         uses: actions/upload-artifact@v4

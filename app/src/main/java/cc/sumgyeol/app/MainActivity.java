@@ -1,6 +1,9 @@
 package cc.sumgyeol.app;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.Bundle;
@@ -20,6 +23,7 @@ public class MainActivity extends Activity {
 	private TextView statusText;
 
 	private static final int VPN_REQUEST = 1;
+	private static final int NOTIF_REQUEST = 2;
 
 	@Override
 	protected void onCreate(Bundle b) {
@@ -54,6 +58,20 @@ public class MainActivity extends Activity {
 		connectBtn.setOnClickListener(v -> onConnectClicked());
 
 		updateStatus();
+		requestNotifPermission();
+	}
+
+	// 안드로이드 13+ : 알림 권한 없으면 포그라운드 서비스 시작 시 앱이 죽을 수 있어 미리 요청
+	private void requestNotifPermission() {
+		if (Build.VERSION.SDK_INT >= 33) {
+			if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+					!= PackageManager.PERMISSION_GRANTED) {
+				try {
+					requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIF_REQUEST);
+				} catch (Exception e) {
+				}
+			}
+		}
 	}
 
 	@Override

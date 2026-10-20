@@ -26,19 +26,32 @@ public class TProxyService extends VpnService {
 	public static final String ACTION_CONNECT = "cc.sumgyeol.app.CONNECT";
 	public static final String ACTION_DISCONNECT = "cc.sumgyeol.app.DISCONNECT";
 
+	private static boolean libLoaded = false;
 	static {
-		System.loadLibrary("hev-socks5-tunnel");
+		try {
+			System.loadLibrary("hev-socks5-tunnel");
+			libLoaded = true;
+		} catch (Throwable t) {
+			libLoaded = false;
+		}
 	}
 
 	private ParcelFileDescriptor tunFd = null;
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		if (intent != null && ACTION_DISCONNECT.equals(intent.getAction())) {
+		try {
+			if (intent != null && ACTION_DISCONNECT.equals(intent.getAction())) {
+				stopService();
+				return START_NOT_STICKY;
+			}
+			startService();
+		} catch (Throwable t) {
+			try {
+				android.widget.Toast.makeText(this, "오류: " + t.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+			} catch (Throwable ignore) {}
 			stopService();
-			return START_NOT_STICKY;
 		}
-		startService();
 		return START_STICKY;
 	}
 
@@ -51,6 +64,17 @@ public class TProxyService extends VpnService {
 	public void startService() {
 		if (tunFd != null)
 			return;
+
+		// 포그라운드 알림을 "먼저" 띄운다 (안 그러면 최신 안드로이드에서 즉시 강제종료)
+		String ch = "sumgyeol";
+		initChannel(ch);
+		showNotification(ch);
+
+		if (!libLoaded) {
+			android.widget.Toast.makeText(this, "엔진 로드 실패 - 앱을 다시 설치해 주세요.", android.widget.Toast.LENGTH_LONG).show();
+			stopService();
+			return;
+		}
 
 		Preferences prefs = new Preferences(this);
 
@@ -119,13 +143,15 @@ public class TProxyService extends VpnService {
 			return;
 		}
 
-		TProxyStartService(confFile.getAbsolutePath(), tunFd.getFd());
+		try {
+			TProxyStartService(confFile.getAbsolutePath(), tunFd.getFd());
+		} catch (Throwable t) {
+			android.widget.Toast.makeText(this, "연결 시작 실패: " + t.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+			stopService();
+			return;
+		}
 		prefs.setEnable(true);
 		QSTileService.requestUpdate(this);
-
-		String ch = "sumgyeol";
-		initChannel(ch);
-		showNotification(ch);
 	}
 
 	public void stopService() {

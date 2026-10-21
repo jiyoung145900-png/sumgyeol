@@ -14,6 +14,9 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.app.AlertDialog;
+import java.io.File;
+import java.io.FileInputStream;
 
 public class MainActivity extends Activity {
 	private Preferences prefs;
@@ -59,6 +62,9 @@ public class MainActivity extends Activity {
 
 		updateStatus();
 		requestNotifPermission();
+
+		// 상태 글자를 길게 누르면 엔진 로그 보기 (연결 안 될 때 원인 확인)
+		statusText.setOnLongClickListener(v -> { showLog(); return true; });
 	}
 
 	// 안드로이드 13+ : 알림 권한 없으면 포그라운드 서비스 시작 시 앱이 죽을 수 있어 미리 요청
@@ -165,6 +171,28 @@ public class MainActivity extends Activity {
 
 	private boolean isRunning() {
 		return prefs.getEnable();
+	}
+
+	private void showLog() {
+		String text;
+		try {
+			File f = new File(getCacheDir(), "tunnel.log");
+			if (!f.exists()) { text = "(아직 로그가 없어요. 연결을 한 번 시도해 보세요.)"; }
+			else {
+				FileInputStream fis = new FileInputStream(f);
+				byte[] b = new byte[(int) Math.min(f.length(), 20000)];
+				int n = fis.read(b); fis.close();
+				text = new String(b, 0, Math.max(n, 0));
+				if (text.trim().isEmpty()) text = "(로그가 비어 있어요.)";
+			}
+		} catch (Exception e) {
+			text = "로그 읽기 실패: " + e.getMessage();
+		}
+		new AlertDialog.Builder(this)
+			.setTitle("엔진 로그")
+			.setMessage(text)
+			.setPositiveButton("닫기", null)
+			.show();
 	}
 
 	private void updateStatus() {

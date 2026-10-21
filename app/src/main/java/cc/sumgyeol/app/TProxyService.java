@@ -108,13 +108,17 @@ public class TProxyService extends VpnService {
 			confFile.createNewFile();
 			FileOutputStream fos = new FileOutputStream(confFile, false);
 
-			boolean http = "http".equalsIgnoreCase(prefs.getType());
+boolean http = "http".equalsIgnoreCase(prefs.getType());
 			// HTTP 프록시는 UDP 미지원 → UDP를 TCP로 감쌈
 			String udpMode = (http || prefs.getUdpInTcp()) ? "tcp" : "udp";
 
+			// 엔진 로그를 파일로 남김 (문제 생기면 원인 확인용)
+			String logPath = new File(getCacheDir(), "tunnel.log").getAbsolutePath();
+
 			String conf = "misc:\n" +
 				"  task-stack-size: " + prefs.getTaskStackSize() + "\n" +
-				"  log-level: warn\n" +
+				"  log-file: '" + logPath + "'\n" +
+				"  log-level: info\n" +
 				"tunnel:\n" +
 				"  mtu: " + prefs.getMtu() + "\n" +
 				"  icmp: 'reply'\n" +
@@ -128,7 +132,7 @@ public class TProxyService extends VpnService {
 				conf += "  password: '" + prefs.getPass().replace("'", "''") + "'\n";
 			}
 
-			// 매핑 DNS (앱이 보낸 DNS 질의를 터널 안에서 처리)
+			// 매핑 DNS: 앱이 보낸 DNS 질의를 가짜 IP로 응답하고 터널 안에서 처리 (DNS 누수 방지)
 			conf += "mapdns:\n" +
 				"  address: " + prefs.getMappedDns() + "\n" +
 				"  port: 53\n" +

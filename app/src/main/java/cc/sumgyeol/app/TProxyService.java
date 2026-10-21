@@ -153,8 +153,9 @@ public class TProxyService extends VpnService {
 		builder.setMtu(prefs.getMtu());
 		builder.addAddress(prefs.getTunIpv4(), prefs.getTunIpv4Prefix());
 		builder.addRoute("0.0.0.0", 0);
-		builder.addAddress(prefs.getTunIpv6(), prefs.getTunIpv6Prefix());
-		builder.addRoute("::", 0);
+		// IPv6는 터널에 넣지 않음: 대부분의 프록시가 IPv6를 못 다뤄서 텔레그램 등이 IPv6로 접속하다 막힘.
+		// VPN에 IPv6를 설정하지 않으면 안드로이드가 IPv6를 자동 차단 → 진짜 IP 누수 없이
+		// 앱들이 즉시 IPv4로 넘어가 프록시를 정상적으로 탄다.
 		builder.addDnsServer(prefs.getMappedDns());
 		builder.setSession("숨결");
 		try {

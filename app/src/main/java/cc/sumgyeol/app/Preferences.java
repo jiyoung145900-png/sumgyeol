@@ -36,7 +36,9 @@ public class Preferences {
 
 	// 연결 상태 (부팅 자동연결/타일용)
 	public boolean getEnable()        { return p.getBoolean("enable", false); }
-	public void    setEnable(boolean v){ p.edit().putBoolean("enable", v).apply(); }
+	public void    setEnable(boolean v){ p.edit().putBoolean("enable", v).commit(); }
+	// 프로세스 종료 직전에도 확실히 저장되도록 동기 저장
+	public void    setEnableNow(boolean v){ p.edit().putBoolean("enable", v).commit(); }
 
 	// 부팅 시 자동 연결
 	public boolean getAutoStart()        { return p.getBoolean("autoStart", false); }

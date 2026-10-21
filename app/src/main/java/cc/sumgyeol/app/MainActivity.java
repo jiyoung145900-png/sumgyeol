@@ -80,10 +80,22 @@ public class MainActivity extends Activity {
 		}
 	}
 
+	private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+	private final Runnable ticker = new Runnable() {
+		@Override public void run() { updateStatus(); ui.postDelayed(this, 1000); }
+	};
+
 	@Override
 	protected void onResume() {
 		super.onResume();
-		updateStatus();
+		ui.removeCallbacks(ticker);
+		ui.post(ticker);
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		ui.removeCallbacks(ticker);
 	}
 
 	private void applyPaste() {
@@ -170,27 +182,33 @@ public class MainActivity extends Activity {
 	}
 
 	private boolean isRunning() {
-		return prefs.getEnable();
+		return VpnState.isRunning(this);
+	}
+	private String readTail(File f, int max) {
+		try {
+			if (!f.exists()) return null;
+			FileInputStream fis = new FileInputStream(f);
+			long len = f.length();
+			if (len > max) fis.skip(len - max);
+			byte[] b = new byte[(int) Math.min(len, max)];
+			int n = fis.read(b); fis.close();
+			return n > 0 ? new String(b, 0, n, "UTF-8") : "";
+		} catch (Exception e) {
+			return "읽기 실패: " + e.getMessage();
+		}
 	}
 
 	private void showLog() {
-		String text;
-		try {
-			File f = new File(getCacheDir(), "tunnel.log");
-			if (!f.exists()) { text = "(아직 로그가 없어요. 연결을 한 번 시도해 보세요.)"; }
-			else {
-				FileInputStream fis = new FileInputStream(f);
-				byte[] b = new byte[(int) Math.min(f.length(), 20000)];
-				int n = fis.read(b); fis.close();
-				text = new String(b, 0, Math.max(n, 0));
-				if (text.trim().isEmpty()) text = "(로그가 비어 있어요.)";
-			}
-		} catch (Exception e) {
-			text = "로그 읽기 실패: " + e.getMessage();
-		}
+		String a = readTail(VpnState.appLogFile(this), 6000);
+		String e = readTail(VpnState.engineLogFile(this), 8000);
+		StringBuilder sb = new StringBuilder();
+		sb.append("■ 연결 단계\n");
+		sb.append(a == null || a.trim().isEmpty() ? "(기록 없음 - [연결하기]를 눌러 보세요)\n" : a);
+		sb.append("\n■ 엔진 로그\n");
+		sb.append(e == null || e.trim().isEmpty() ? "(기록 없음)\n" : e);
 		new AlertDialog.Builder(this)
-			.setTitle("엔진 로그")
-			.setMessage(text)
+			.setTitle("연결 로그")
+			.setMessage(sb.toString())
 			.setPositiveButton("닫기", null)
 			.show();
 	}

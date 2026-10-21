@@ -22,7 +22,7 @@ public class QSTileService extends TileService {
 	private void updateTile() {
 		Tile tile = getQsTile();
 		if (tile == null) return;
-		boolean on = new Preferences(this).getEnable();
+		boolean on = VpnState.isRunning(this);
 		tile.setState(on ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
 		tile.setLabel(getString(R.string.app_name));
 		tile.updateTile();
@@ -32,7 +32,7 @@ public class QSTileService extends TileService {
 	public void onClick() {
 		super.onClick();
 		Preferences prefs = new Preferences(this);
-		if (prefs.getEnable()) {
+		if (VpnState.isRunning(this)) {
 			Intent i = new Intent(this, TProxyService.class);
 			i.setAction(TProxyService.ACTION_DISCONNECT);
 			startService(i);
